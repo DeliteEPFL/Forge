@@ -1,5 +1,7 @@
 package LOWERCASE_DSL_NAME
 
+import scala.reflect.RefinedManifest
+
 package object shallow /* extends FractionalImplicits */ {
   type ForgeArray[T] = scala.Array[T]
   type ForgeArrayBuffer[T] = scala.collection.mutable.ArrayBuffer[T]
@@ -8,6 +10,13 @@ package object shallow /* extends FractionalImplicits */ {
   type SByteBuffer = java.nio.ByteBuffer
   type FString = String
   type Tup2[A,B] = scala.Tuple2[A,B] // TODO fix general Tup - Tuple translation in shallow
+
+  type Rep[+T] = T
+  def unit[T:Manifest](x: T) = x
+
+  trait PimpedRefinedManifest[T] extends RefinedManifest[T] {
+    def create(fields: Seq[(String, Any)]): T
+  }
 
   class FractionalOps[T: Fractional](lhs: T){
     def /(rhs: T) = implicitly[Fractional[T]].div(lhs, rhs)

@@ -1,17 +1,9 @@
 package optiql.shallow.classes
 
 import optiql.shallow._
-import scala.reflect.RefinedManifest
 
 //TODO: this object is basically a misc. grab bag of features, but most of it should be pushed directly into Forge
 object Rewrite {
-
-  type Rep[+T] = T
-  def unit[T:Manifest](x: T) = x
-
-  trait PimpedRefinedManifest[T] extends RefinedManifest[T] {
-    def create(fields: Seq[(String, Any)]): T
-  }
 
   def groupByHackImpl[K:Manifest,V:Manifest](self: Table[V], keySelector: V => K): Table[Tuple2[K,Table[V]]] = {
     val arr = self.data.take(self.size)
@@ -51,6 +43,7 @@ object Rewrite {
 
   ////////////
 
+  // Done through Numeric
   def zeroType[T:Manifest]: T = (manifest[T] match { //need a more robust solution, e.g. type class
     //case StructType(tag,elems) => struct[T](tag, elems.map(e => (e._1, zeroType(e._2))))
     case v if v == manifest[Int] => 0
@@ -60,6 +53,7 @@ object Rewrite {
     case _ => null
   }).asInstanceOf[T]
 
+  // Make Bounded typeclass
   def minValue[T:Manifest]: T = (manifest[T] match {
     case v if v == manifest[Int] => scala.Int.MinValue
     case v if v == manifest[Long] => scala.Long.MinValue
@@ -69,6 +63,7 @@ object Rewrite {
     case _ => null //cast_asinstanceof[Null,T](null)) //shouldn't be used for reference types
   }).asInstanceOf[T]
 
+  // Make Bounded typeclass
   def maxValue[T:Manifest]: T = (manifest[T] match {
     case v if v == manifest[Int] => scala.Int.MaxValue
     case v if v == manifest[Long] => scala.Long.MaxValue
@@ -78,6 +73,7 @@ object Rewrite {
     case _ => null //cast_asinstanceof[Null,T](null)) //shouldn't be used for reference types
   }).asInstanceOf[T] 
 
+  // TODO how to do this?
   def upgradeInt[T:Manifest](value: Int): T = (manifest[T] match {
     case v if v == manifest[Int] => value
     case v if v == manifest[Long] => value.toLong
