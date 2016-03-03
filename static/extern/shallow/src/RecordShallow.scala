@@ -134,7 +134,7 @@ class RecordMacros(val c: Context) {
   """
 }
 
-object RecordOps {
+object RecordShallowOps {
 
   object RecordShallow extends Dynamic {
 
