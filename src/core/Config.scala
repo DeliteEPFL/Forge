@@ -9,4 +9,5 @@ object Config {
   val genLib = System.getProperty("forge.gen.lib","true").toBoolean
   val genDelite = System.getProperty("forge.gen.delite","true").toBoolean
   val genShallow = System.getProperty("forge.gen.shallow","true").toBoolean
+  val genCdeep = System.getProperty("forge.gen.cdeep","true").toBoolean
 }

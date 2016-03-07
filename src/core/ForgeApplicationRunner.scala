@@ -12,6 +12,7 @@ import templates.library.ForgeCodeGenInterpreter
 import templates.compiler.ForgeCodeGenDelite
 import templates.ident.ForgeCodeGenIdent
 import templates.shallow.ForgeCodeGenShallow
+import templates.cdeep.ForgeCodeGenCdeep
 
 trait ForgeApplicationRunner extends ForgeApplication with ForgeExp {
   val dsl = dslName.filterNot(_ == ' ').capitalize
@@ -97,11 +98,17 @@ trait ForgeApplicationRunner extends ForgeApplication with ForgeExp {
       val IR: ForgeApplicationRunner.this.type = ForgeApplicationRunner.this
     }
 
+    // shallow
+    val cdeepCodegen = new ForgeCodeGenCdeep {
+      val IR: ForgeApplicationRunner.this.type = ForgeApplicationRunner.this
+    }
+
     var codeGenerators: List[ForgeCodeGenBackend{val IR: ForgeApplicationRunner.this.type; val buildDir: String}] = List(sharedCodegen)
     if (Config.genLib) codeGenerators :+= libraryCodegen
     if (Config.genDelite) codeGenerators :+= deliteCodegen
-    if (Config.genIdent) codeGenerators :+= identCodegen
+    // if (Config.genIdent) codeGenerators :+= identCodegen
     if (Config.genShallow) codeGenerators :+= shallowCodegen
+    if (Config.genCdeep) codeGenerators :+= cdeepCodegen
 
     for (c <- codeGenerators) {
       c.emitDSLImplementation()
