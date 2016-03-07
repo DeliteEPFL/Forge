@@ -219,24 +219,20 @@ trait ShallowGenOps extends ForgeCodeGenBase with BaseGenDataStructures {
    */
 
   // untyped implicit args
-  def makeImplicitCtxBoundsArgs(tpePars: List[Rep[TypePar]]): List[Rep[DSLArg]]  = {
-    tpePars.flatMap(
-      tp => tp.ctxBounds.map(
-        cb => arg(
-          "implicitly["+cb.name+"["+quote(tp)+"]]", 
-          tpe(cb.name, List(tpePar(quote(tp), List(), now)), now),
-          None
-        )
-      )
-    )
+  def makeImplicitCtxBoundsStringList(tpePars: List[Rep[TypePar]]): List[String]  = {
+    tpePars.flatMap { a =>
+      a.ctxBounds.map(b => "implicitly["+b.name+"["+quote(a)+"]]")
+    }
   }
 
   def makeImplicitArgs(tpePars: List[Rep[TypePar]], args: List[Rep[DSLArg]], implicitArgs: List[Rep[DSLArg]]) = {
-    val hkInstantiations = getHkTpeParInstantiations(tpePars, args, implicitArgs)
+    val ctxBoundsStringList = makeImplicitCtxBoundsStringList(withoutHkTpePars(tpePars))
+    val implicitArgsStringList = implicitArgs.filter(_.tpe != MSourceContext).map(quote)
+    val hkInstantiationsStringList = getHkTpeParInstantiations(tpePars, args, implicitArgs).map(quote)
 
     // passing order is: regular ctxBounds, then regular implicits, and finally hkInstantiations context bounds
-    val allImplicitArgs = makeImplicitCtxBoundsArgs(tpePars) ++ (implicitArgs filter (_.tpe != MSourceContext)) ++ hkInstantiations
-    if (allImplicitArgs.length > 0) "(" + allImplicitArgs.map(quote).mkString(",") + ")"
+    val allImplicitsStringList = ctxBoundsStringList ++ implicitArgsStringList ++ hkInstantiationsStringList
+    if (allImplicitsStringList.length > 0) "(" + allImplicitsStringList.mkString(",") + ")"
     else ""
   }
 
@@ -841,7 +837,9 @@ trait ShallowGenOps extends ForgeCodeGenBase with BaseGenDataStructures {
           // stream.println("  " + makeSyntaxMethod(o))
           // println(o.name + " "*(20-o.name.length) + o.args.length + "    " + o.args.map(x => (x.name,x.tpe.name)))
           // if there's an op with no arguments (only 1), same name and type as a field, skip it to avoid clash
-          if (o.args.length > 1 || dataStruct.isEmpty || (o.args.length == 1 && !dataStruct.get.fields.contains((o.name, tpe(o.retTpe.name))))) {
+          if (o.args.length > 1
+            || dataStruct.isEmpty 
+            || (o.args.length == 1  && !dataStruct.get.fields.exists(x => x._1 == o.name && x._2.name == o.retTpe.name))) {
             val otherArgs = makeArgsWithNowType(o.firstArgs.drop(1), o.effect != pure || o.name == "apply")
             val curriedArgs = o.curriedArgs.map(a => makeArgsWithNowType(a)).mkString("")
             val otherTpePars = o.tpePars.filterNot(p => tpePars.map(_.name).contains(p.name))
