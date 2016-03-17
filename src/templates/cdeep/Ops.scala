@@ -524,8 +524,8 @@ trait BaseGenOps extends ForgeCodeGenBase {
     //   stream.println()
     // }
 
-    val base = if (implicitOps.length > 0) opsGrp.name + "Base" else baseOpsCls(opsGrp.grp)
-    stream.println("trait " + opsGrp.name + " extends " + base + " {")
+    // val base = if (implicitOps.length > 0) opsGrp.name + "Base" else baseOpsCls(opsGrp.grp)
+    // stream.println("trait " + opsGrp.name + " extends " + base + " {")
     // stream.println("  this: " + dsl + " => ")
     // stream.println()
 
@@ -582,16 +582,40 @@ trait BaseGenOps extends ForgeCodeGenBase {
       //           )
       // print(opsGrp.name + " ")
       // println(ops1.length)
-      val tpes = ops.map(_.args.apply(0).tpe).distinct
+      val allTpes = ops.map(_.args.apply(0).tpe).distinct
+      val (tpes, tpePI) = allTpes.partition{
+        case Def(Tpe(_,_,_)) => true
+        case Def(TpeInst(_,_)) => false
+        case Def(TpePar(_,_,_)) => false
+        case _ => false
+      }
+
+      val grpAPIName = opsGrp.grp.name+"s"+"API"
+      val grpImplName = opsGrp.grp.name+"s"+"Impl"
+
+      stream.print("trait " + grpAPIName)
+      if(!tpes.isEmpty) stream.print(" extends "+tpes.head.name+"s" + tpes.tail.map(t => " with "+t.name+"s").mkString(""))
+      stream.println()
+      stream.print("trait " + grpImplName + " extends " + grpAPIName)
+      stream.print(tpes.map(t => " with "+t.name+"s"+"Impl").mkString(""))
+      stream.println()
+
       for (tpe <- tpes) {
-        val tpePars = tpe match {
-          case Def(TpeInst(_,args)) => args.filter(isTpePar).asInstanceOf[List[Rep[TypePar]]]
-          case Def(TpePar(_,_,_)) => List(tpe.asInstanceOf[Rep[TypePar]])
-          case _ => tpe.tpePars
-        }
-        val tpeArgs = tpe match {
-          case Def(TpeInst(hk,args)) => args.filterNot(isTpePar)
-          case _ => Nil
+        // val tpePars = tpe match {
+        //   case Def(TpeInst(_,args)) => args.filter(isTpePar).asInstanceOf[List[Rep[TypePar]]]
+        //   case Def(TpePar(_,_,_)) => List(tpe.asInstanceOf[Rep[TypePar]])
+        //   case _ => tpe.tpePars
+        // }
+        // val tpeArgs = tpe match {
+        //   case Def(TpeInst(hk,args)) => args.filterNot(isTpePar)
+        //   case _ => Nil
+        // }
+
+        tpe match {
+          case Def(Tpe(_,_,_)) => println("Tpe: " + tpe.name)
+          case Def(TpeInst(_,_)) => println("TpeInst: " + tpe.name)
+          case Def(TpePar(_,_,_)) => println("TpePar: " + tpe.name)
+          case _ => println("Catchall Tpe: " + tpe.name)
         }
 
         // val opsClsName = opsGrp.grp.name + tpe.name.replaceAll("\\.","") + tpeArgs.map(_.name).mkString("") + "OpsCls"
@@ -614,22 +638,44 @@ trait BaseGenOps extends ForgeCodeGenBase {
 
         stream.println()
         // stream.println("  class " + opsClsName + makeTpeParsWithBounds(tpePars) + "(val self: " + repify(tpe) + ")(implicit __pos: SourceContext) {")
-        stream.println("  trait " + typeName+"s" + " " + "extends Base {")
+        val typePluName = typeName+"s";
+        val typeNameLowercase = typeName.toLowerCase
+        // stream.println("  trait " + typePluName + " " + "extends Base {")
+        stream.println("trait " + typePluName + " extends Base {")
+        val nonReppedType = ephemeralTpe(tpe.name, tpe.tpePars, compile) // non-repped
+        val nonReppedTypeName = typifyQualifiedShallowSome(nonReppedType)
 
         val typeOpsName = typeName+"Ops"
-        stream.println("    protected trait " + typeOpsName + " {")
+        stream.println("  protected trait " + typeOpsName + " {")
           for (o <- ops if quote(o.args.apply(0).tpe) == quote(tpe)) {
             val otherArgs = makeArgsWithType(o.firstArgs.drop(1), typifyQualifiedShallowSome, true)//o.effect != pure || o.name == "apply")
-            stream.println("      def " + o.name + otherArgs + ": " + typifyQualifiedShallowSome(o.retTpe))
+            stream.println("    def " + o.name + otherArgs + ": " + typeName)
           }
-        stream.println("    }")
+        stream.println("  }")
         stream.println()
-        stream.println("    type " + typeName + " <: " + typeOpsName);
-        stream.println("    implicit val "+typeName.toLowerCase+"Manifest: Manifest["+typeName+"]")
-        stream.println("    implicit val "+typeName.toLowerCase+"Typ: Typ["+typeName+"]")
-        stream.println("    implicit val "+typeName.toLowerCase+"Lift: Lift["+typifyQualifiedShallowSome(tpe)+","+typeName+"]")
-
-
+        stream.println("  type " + typeName + " <: " + typeOpsName);
+        stream.println("  implicit val "+typeNameLowercase+"Manifest: Manifest["+typeName+"]")
+        stream.println("  implicit val "+typeNameLowercase+"Typ: Typ["+typeName+"]")
+        stream.println("  implicit val "+typeNameLowercase+"Lift: Lift["+nonReppedTypeName+","+typeName+"]")
+        stream.println("}")
+        stream.println()
+        stream.println("trait " + typePluName+"Impl" + " " + "extends BaseExp with " + typePluName + " {")
+        stream.println("  case class " + typeName + "(e: Exp["+typeName+"]) extends " + typeOpsName + " {")
+          for (o <- ops if quote(o.args.apply(0).tpe) == quote(tpe)) {
+            val otherArgs = makeArgsWithType(o.firstArgs.drop(1), typifyQualifiedShallowSome, true)//o.effect != pure || o.name == "apply")
+            stream.println("    def " + o.name + otherArgs + ": " + typeName + " = ???")
+          }
+        stream.println("  }")
+        stream.println()
+        stream.println("  val "+typeNameLowercase+"Manifest: Manifest["+typeName+"] = manifest["+typeName+"]")
+        stream.println("  val "+typeNameLowercase+"Typ: Typ["+typeName+"] = new Typ["+typeName+"] {")
+        stream.println("    def from(e:Exp["+typeName+"]) = "+typeName+"(e)")
+        stream.println("    def to(x:"+typeName+") = x.e")
+        stream.println("    override def toString = \""+typeName+"\"")
+        stream.println("  }")
+        stream.println("  val "+typeNameLowercase+"Lift: Lift["+nonReppedTypeName+","+typeName+"] = new Lift["+nonReppedTypeName+","+typeName+"] {")
+        stream.println("    def to(x:"+nonReppedTypeName+") = "+typeName+"(unit["+nonReppedTypeName+","+typeName+"](x))")
+        stream.println("  }")
 
         // for (o <- ops if quote(o.args.apply(0).tpe) == quote(tpe)) {
         //   val otherArgs = makeArgsWithNowType(o.firstArgs.drop(1), o.effect != pure || o.name == "apply")
@@ -637,9 +683,9 @@ trait BaseGenOps extends ForgeCodeGenBase {
         //   val otherTpePars = o.tpePars.filterNot(p => tpePars.map(_.name).contains(p.name))
         //   val ret = if (Config.fastCompile) ": " + repifySome(o.retTpe) else ""
         //   stream.println("    def " + o.name + makeTpeParsWithBounds(otherTpePars) + otherArgs + curriedArgs
-        //     + (makeImplicitArgsWithCtxBoundsWithType(o.tpePars diff otherTpePars, o.args, implicitArgsWithOverload(o), without = tpePars)) + ret + " = " + makeOpMethodNameWithFutureArgs(o, a => if (a.name ==  o.args.apply(0).name) "self" else simpleArgName(a)))
+        //     + (makeImplicitArgsWithCtxBoundsWithType(o.tpePars diff otherTpePars, o.args, implicitArgsWithOverload(o), without = tpePars)) + ret + " = " + makeOpMethodNameWithFuturecanonicalNameArgs(o, a => if (a.name ==  o.args.apply(0).name) "self" else simpleArgName(a)))
         // }
-        stream.println("  }")
+        stream.println("}")
         stream.println()
       }
       stream.println()
@@ -655,7 +701,7 @@ trait BaseGenOps extends ForgeCodeGenBase {
     //   stream.println("  " + makeOpMethodSignature(o, withReturnTpe = Some(true)))
     // }
 
-    stream.println("}")
+    // stream.println("}")
 
     // // compiler ops
     // val compilerOps = opsGrp.ops.filter(e=>e.style == compilerMethod)

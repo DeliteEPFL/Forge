@@ -100,14 +100,23 @@ trait ForgeExp extends Forge with ForgeUtilities with ForgeScalaOpsPkgExp with D
     }
   }
 
+  val scalaPrimitiveTypes: Set[String] = Set("Byte", "Char", "Short", "Int", "Long", "Float", "Double", "Boolean", "String", "Unit", "Any", "Nothing")
+
   // -- IR helpers
+  def isScalaPrimitiveType(t: Rep[DSLType]) = t match {
+    case Def(Tpe(name,_,_)) if scalaPrimitiveTypes exists { tp => name.equals(tp) } => true
+    case Def(Tpe(name,_,_)) if primitiveTpePrefix exists { tp => name.startsWith(tp) } => true
+    case Def(Tpe(name,_,_)) if name.startsWith("Tuple") => true
+    case _ => false
+  }
 
   def isForgePrimitiveType(t: Rep[DSLType]) = t match {
     case `MShort` | `MInt` | `MLong` | `MFloat` | `MDouble` | `MBoolean` | `MChar` | `MByte` | `MString` | `MUnit` | `MAny` | `MNothing` | `MLambda` | `MSourceContext` | `byName` => true
     case `CShort` | `CInt` | `CLong` | `CFloat` | `CDouble` | `CBoolean` | `CChar` | `CByte` | `CString` | `CUnit` | `CAny` | `CNothing` => true
+    case `PShort` | `PInt` | `PLong` | `PFloat` | `PDouble` | `PBoolean` | `PChar` | `PByte` | `PString` | `PUnit` | `PAny` | `PNothing` => true
     // case Def(Tpe(_,_,`now`)) => true
     case Def(Tpe(name,_,_)) if name.startsWith("Tuple") => true
-    case Def(Tpe(name,_,_)) if primitiveTpePrefix exists { t => name.startsWith(t) } => true
+  case Def(Tpe(name,_,_)) if primitiveTpePrefix exists { t => name.startsWith(t) } => true
     case Def(Tpe("ForgeArray",_,_)) | Def(Tpe("ForgeArrayBuffer",_,_)) | Def(Tpe("ForgeHashMap",_,_)) => true
     case Def(Tpe("ForgeFileInputStream",_,_)) | Def(Tpe("ForgeFileOutputStream",_,_)) => true
     case Def(Tpe("Var",_,_)) => true
@@ -262,36 +271,6 @@ trait ForgeCodeGenBase extends GenericCodegen with ScalaGenBase {
     case _ => "Rep[" + quote(a) + "]"
   }
 
-  def typify(a: Exp[Any]): String = a match {
-    case Def(Arg(name, tpe, default)) => typify(tpe)
-    case Def(FTpe(args,ret,freq)) => args match {
-      case List(Def(Arg(_,`byName`,_))) => " => " + typify(ret)
-      case _ => "(" + args.map(typify).mkString(",") + ") => " + typify(ret)
-    }
-    case Def(Tpe(name, arg, `compile`)) => quote(a)
-    case Def(Tpe("Var", arg, stage)) => typify(arg(0))
-    case Def(TpeClass(_,_,_)) | Def(TpeClassInst(_,_,_)) => quote(a)
-    case Def(TpeInst(Def(Tpe("Var",a1,s1)), a2)) => typify(a2(0))
-    case Def(TpeInst(Def(Tpe(name, args, `compile`)), args2)) => name + (if (!args2.isEmpty) "[" + args2.map(typifySome).mkString(",") + "]" else "") // implicits don't auto-convert things wrapped in an outer tpe, so we still use typifySome
-    case Def(VarArgs(t)) => "Seq[" + typify(t) + "]"
-    case _ => quote(a)
-  }
-
-  def typifyQualifiedShallow(a: Exp[Any]): String = a match {
-    case Def(Arg(name, tpe, default)) => typify(tpe)
-    case Def(FTpe(args,ret,freq)) => args match {
-      case List(Def(Arg(_,`byName`,_))) => " => " + typify(ret)
-      case _ => "(" + args.map(typify).mkString(",") + ") => " + typify(ret)
-    }
-    case Def(Tpe(name, arg, `compile`)) => quote(a)
-    case Def(Tpe("Var", arg, stage)) => typify(arg(0))
-    case Def(TpeClass(_,_,_)) | Def(TpeClassInst(_,_,_)) => quote(a)
-    case Def(TpeInst(Def(Tpe("Var",a1,s1)), a2)) => typify(a2(0))
-    case Def(TpeInst(Def(Tpe(name, args, `compile`)), args2)) => name + (if (!args2.isEmpty) "[" + args2.map(typifySome).mkString(",") + "]" else "") // implicits don't auto-convert things wrapped in an outer tpe, so we still use typifySome
-    case Def(VarArgs(t)) => "Seq[" + typify(t) + "]"
-    case _ => "scala."+quote(a)
-  }
-
   def repifySome(a: Exp[Any]): String = a match {
     case Def(Arg(name, tpe, default)) => repifySome(tpe)
     case Def(FTpe(args,ret,freq)) => args match {
@@ -306,6 +285,21 @@ trait ForgeCodeGenBase extends GenericCodegen with ScalaGenBase {
     case Def(TpeInst(Def(Tpe("Var",a1,s1)), a2)) => varify(a2(0))
     case Def(VarArgs(t)) => repifySome(t) + "*"
     case _ => repify(a)
+  }
+
+  def typify(a: Exp[Any]): String = a match {
+    case Def(Arg(name, tpe, default)) => typify(tpe)
+    case Def(FTpe(args,ret,freq)) => args match {
+      case List(Def(Arg(_,`byName`,_))) => " => " + typify(ret)
+      case _ => "(" + args.map(typify).mkString(",") + ") => " + typify(ret)
+    }
+    case Def(Tpe(name, arg, `compile`)) => quote(a)
+    case Def(Tpe("Var", arg, stage)) => typify(arg(0))
+    case Def(TpeClass(_,_,_)) | Def(TpeClassInst(_,_,_)) => quote(a)
+    case Def(TpeInst(Def(Tpe("Var",a1,s1)), a2)) => typify(a2(0))
+    case Def(TpeInst(Def(Tpe(name, args, `compile`)), args2)) => name + (if (!args2.isEmpty) "[" + args2.map(typifySome).mkString(",") + "]" else "") // implicits don't auto-convert things wrapped in an outer tpe, so we still use typifySome
+    case Def(VarArgs(t)) => "Seq[" + typify(t) + "]"
+    case _ => quote(a)
   }
 
   def typifySome(a: Exp[Any]): String = a match {
@@ -323,19 +317,43 @@ trait ForgeCodeGenBase extends GenericCodegen with ScalaGenBase {
     case _ => typify(a)
   }
 
+  // def typifyQualifiedShallow(a: Exp[Any]): String = a match {
+  //   case Def(Tpe("Var", arg, stage)) => typifyQualifiedShallow(arg(0))
+  //   case Def(TpeClass(_,_,_)) | Def(TpeClassInst(_,_,_)) => quote(a)
+  //   case Def(TpeInst (Def(Tpe("Var",a1,s1)), a2)) => typifyQualifiedShallow(a2(0))
+  //   case Def(TpeInst(Def(Tpe(name, args, `compile`)), args2)) => name + (if (!args2.isEmpty) "[" + args2.map(typifyQualifiedShallowSome).mkString(",") + "]" else "") // implicits don't auto-convert things wrapped in an outer tpe, so we still use typifySome
+  //   case Def(VarArgs(t)) => "Seq[" + typifyQualifiedShallow(t) + "]"
+  //   case _ => {
+  //     println("Catch-all "+quote(a))
+  //     quote(a)
+  //   }
+  // }
+
   def typifyQualifiedShallowSome(a: Exp[Any]): String = a match {
-    case Def(Arg(name, tpe, default)) => typifySome(tpe)
-    case Def(FTpe(args,ret,freq)) => args match {
-      case List(Def(Arg(_,`byName`,_))) => " => " + typifySome(ret)
-      case _ => "(" + args.map(typifySome).mkString(",") + ") => " + typifySome(ret)
+    // case Def(Arg(name, tpe, default)) => typifyQualifiedShallowSome(tpe)
+    // case Def(FTpe(args,ret,freq)) => args match {
+    //   case List(Def(Arg(_,`byName`,_))) => " => " + typifyQualifiedShallowSome(ret)
+    //   case _ => "(" + args.map(typifyQualifiedShallowSome).mkString(",") + ") => " + typifyQualifiedShallowSome(ret)
+    // }
+    case Def(Tpe(name, args, `future`)) => quote(a)
+    case tdt@Def(Tpe(name, args, _)) => {
+      if(isScalaPrimitiveType(tdt.asInstanceOf[Exp[DSLType]])) {
+        "scala."+quote(a)
+      } else {
+        dslName.toLowerCase+".shallow.classes."+quote(a)
+      }
     }
-    case Def(Tpe(name, arg, `now`)) => "scala."+quote(a)
-    case Def(Tpe("Var", arg, stage)) => varify(arg(0))
-    case Def(TpePar(name, ctx, `now`)) => "scala."+quote(a)
+    // case Def(Tpe("Var", args, stage)) => varify(args(0))
+    // case tdt@Def(TpePar(name, ctx, `now`)) => quote(a)
+    // case tdt@Def(TpePar(name, ctx, `future`)) => quote(a)
     case Def(TpeInst(Def(Tpe("Var",a1,s1)), a2)) => varify(a2(0))
-    case Def(TpeInst(Def(Tpe(name, args, `now` | `compile`)), args2)) => name + (if (!args2.isEmpty) "[" + args2.map(typifySome).mkString(",") + "]" else "") // is this the right thing to do?
-    case Def(VarArgs(t)) => typifySome(t) + "*"
-    case _ => typify(a)
+    // case Def(TpeInst(Def(Tpe(name, args, `now` | `compile`)), args2)) => name + (if (!args2.isEmpty) "[" + args2.map(typifyQualifiedShallowSome).mkString(",") + "]" else "") // is this the right thing to do?
+    case Def(VarArgs(t)) => typifyQualifiedShallowSome(t) + "*"
+    // case _ => typifyQualifiedShallow(a)
+    case _ => {
+      // println("Catch-all "+quote(a))
+      quote(a)
+    }
   }
 
   def argify(a: Exp[DSLArg], typify: Exp[DSLType] => String = repify): String = a match {
