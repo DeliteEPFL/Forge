@@ -80,6 +80,7 @@ object ForgeArrayBuffer {
     }
     out
   }
+  def array_buffer_raw_alloc[T:Manifest](__arg0: ForgeArrayBuffer[T],__arg1: Int): ForgeArrayBuffer[T] = array_buffer_empty[T](__arg1)
   def array_buffer_copy[T:Manifest](src: ForgeArrayBuffer[T], srcPos: Int, dest: ForgeArrayBuffer[T], destPos: Int, length: Int): Unit = {
     for (i <- 0 until length) {
       dest(destPos+i) = src(srcPos+i)
@@ -95,6 +96,7 @@ object ForgeArrayBuffer {
     = __arg0.slice(0,__arg1)
   def array_buffer_append[T:Manifest](__arg0: ForgeArrayBuffer[T],__arg1: T): Unit
     = { __arg0 += __arg1 }
+  def array_buffer_dcappend[T:Manifest](__arg0: ForgeArrayBuffer[T],__arg1: Int,__arg2: T): Unit = array_buffer_append(__arg0,__arg2)
   def array_buffer_indexof[T:Manifest](__arg0: ForgeArrayBuffer[T],__arg1: T): Int
     = __arg0.indexOf(__arg1)
   def array_buffer_result[T:Manifest](__arg0: ForgeArrayBuffer[T]): ForgeArray[T]
