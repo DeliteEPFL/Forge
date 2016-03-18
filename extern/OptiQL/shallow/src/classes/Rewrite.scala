@@ -1,9 +1,8 @@
-package optiql.shallow.classes
-
-import optiql.shallow._
+package optiql.shallow
 
 //TODO: this object is basically a misc. grab bag of features, but most of it should be pushed directly into Forge
-object Rewrite {
+// We either need to import Rewrite._ if it is an object - only for OptiQL (can we do this in Forge?), or we make it a package object
+package object classes {
 
   def groupByHackImpl[K:Manifest,V:Manifest](self: Table[V], keySelector: V => K): Table[Tuple2[K,Table[V]]] = {
     val arr = self.data.take(self.size)

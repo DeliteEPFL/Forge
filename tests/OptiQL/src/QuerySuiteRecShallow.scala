@@ -7,7 +7,7 @@ import ForgeArray._
 import ForgeArrayBuffer._
 import ForgeHashMap._
 import Numeric._
-import Rewrite._
+// import Rewrite._
 import records.Rec
 import optiql.shallow.classes.Table._
 

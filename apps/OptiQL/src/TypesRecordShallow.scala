@@ -1,6 +1,6 @@
 import optiql.shallow._
 import optiql.shallow.classes._
-import optiql.shallow.classes.Rewrite._
+// import optiql.shallow.classes.Rewrite._
 
 trait TypesRecordShallow {
 

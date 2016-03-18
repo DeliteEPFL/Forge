@@ -3,7 +3,7 @@ import ppl.tests.scalatest._
 import optiql.shallow._
 import optiql.shallow.classes._
 import optiql.shallow.classes.Table._
-import optiql.shallow.classes.Rewrite._
+// import optiql.shallow.classes.Rewrite._
 import records.Rec
 
 object TPCHQ1RecShallow extends TPCHQ1TraitRecShallow

@@ -3,7 +3,7 @@ import ppl.tests.scalatest._
 import optiql.shallow._
 import optiql.shallow.classes._
 import optiql.shallow.classes.Table._
-import optiql.shallow.classes.Rewrite._
+// import optiql.shallow.classes.Rewrite._
 
 object TPCHQ1Shallow extends TPCHQ1TraitShallow
 // object TPCHQ6Interpreter extends OptiQLApplicationInterpreter with TPCHQ6Trait
