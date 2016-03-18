@@ -18,7 +18,7 @@ trait ShallowGenImports extends ForgeCodeGenBase {
     stream.println("import ForgeArrayBuffer._")
     stream.println("import ForgeHashMap._")
     stream.println("import ForgeFileReader._")
-    stream.println("import Rewrite._")
+    stream.println("import Numeric._")
   }
 
   def emitScalaMathImports(stream: PrintWriter) {
