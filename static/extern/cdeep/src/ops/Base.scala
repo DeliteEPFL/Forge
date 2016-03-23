@@ -13,8 +13,8 @@ trait Base {
   implicit def identLift[T:Typ]: Lift[T,T]
   implicit def lift[A,B](x: A)(implicit e: Lift[A,B]): B
 
-  type Rep[+T]
-  def unit[A:Manifest, B:Manifest](x: A): Rep[B]
+  // type Rep[+T]
+  // def unit[A:Manifest, B:Manifest](x: A): Rep[B]
 
   type Var[+T]
 }
@@ -29,7 +29,7 @@ trait BaseExp extends Base {
     def tp: Manifest[T @uncheckedVariance] = manifest[T]
   }
 
-  type Rep[+T] = Exp[T]
+  // type Rep[+T] = Exp[T]
 
   case class Sym[+T:Manifest](id: Int) extends Exp[T] {
     override def toString = "x"+id
@@ -66,5 +66,24 @@ trait BaseExp extends Base {
   def lift[A,B](x: A)(implicit e: Lift[A,B]): B = e.to(x)
 
   def typ[T:Typ] = implicitly[Typ[T]]
+}
 
+trait Units extends Base {
+  type Unit
+  implicit def unitManifest: Manifest[Unit]
+  implicit def unitTyp: Typ[Unit]
+  implicit val unitLift: Lift[scala.Unit, Unit]
+}
+
+trait UnitsImpl extends BaseExp {
+  case class Unit(e: Exp[Unit]) 
+  val unitManifest = manifest[Unit]
+  val unitTyp = new Typ[Unit] {
+    def from(e: Exp[Unit]) = Unit(e)
+    def to(x: Unit) = x.e
+    override def toString = "Unit"
+  }
+  val unitLift: Lift[scala.Unit, Unit] = new Lift[scala.Unit, Unit] {
+    def to(x: scala.Unit) = Unit(unit[scala.Unit, Unit](()))
+  }
 }
